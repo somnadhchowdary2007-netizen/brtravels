@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 const reviews = [
   { q: "It's the only cab app that feels considered.", a: "Marissa L.", r: "Creative Director" },
   { q: "The driver knew my name and the exact playlist I needed.", a: "Kenji T.", r: "Founder" },
-  { q: "Cabify made a 2am airport run feel like a hotel check-in.", a: "Sofia R.", r: "Editor" },
+  { q: "BR Travels made a 2am airport run feel like a hotel check-in.", a: "Sofia R.", r: "Editor" },
   { q: "Every ride, exactly when they said, exactly what they promised.", a: "Daniel M.", r: "Investor" },
   { q: "It's transportation as hospitality.", a: "Amara O.", r: "Architect" },
   { q: "Bought the SUV tier for a dinner. Made the night.", a: "Julien P.", r: "Chef" },

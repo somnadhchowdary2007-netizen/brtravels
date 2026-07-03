@@ -5,21 +5,21 @@ import electric from "@/assets/fleet-electric.jpg";
 
 const tiers = [
   {
-    name: "Cabify Noir",
+    name: "BR Noir",
     tag: "Signature sedan",
     price: "from $18",
     img: sedan,
     features: ["Executive sedan", "1–3 passengers", "Bottled water", "Silent mode"],
   },
   {
-    name: "Cabify Grand",
+    name: "BR Grand",
     tag: "Full-size SUV",
     price: "from $32",
     img: suv,
     features: ["Luxury SUV", "1–6 passengers", "Extra luggage", "Champagne on request"],
   },
   {
-    name: "Cabify Volt",
+    name: "BR Volt",
     tag: "All-electric",
     price: "from $22",
     img: electric,

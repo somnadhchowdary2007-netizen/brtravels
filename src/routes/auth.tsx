@@ -39,7 +39,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Welcome to Cabify. Redirecting…");
+        toast.success("Welcome to BR Travels. Redirecting…");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -81,7 +81,7 @@ function AuthPage() {
         />
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to Cabify
+            <ArrowLeft className="h-4 w-4" /> Back to BR Travels
           </Link>
           <div>
             <motion.h1
@@ -93,11 +93,11 @@ function AuthPage() {
               Your ride, <span className="text-gold italic">curated</span>.
             </motion.h1>
             <p className="mt-6 max-w-md text-muted-foreground">
-              Sign in to book luxury cabs, track your driver in real time, and unlock Cabify Gold benefits.
+              Sign in to book luxury cabs, track your driver in real time, and unlock BR Gold benefits.
             </p>
           </div>
           <div className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
-            — Cabify · 2026
+            — BR Travels · 2026
           </div>
         </div>
       </div>
@@ -120,7 +120,7 @@ function AuthPage() {
               ))}
             </div>
             <h2 className="mt-8 font-display text-4xl">
-              {mode === "signin" ? "Welcome back." : "Join Cabify."}
+              {mode === "signin" ? "Welcome back." : "Join BR Travels."}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {mode === "signin"

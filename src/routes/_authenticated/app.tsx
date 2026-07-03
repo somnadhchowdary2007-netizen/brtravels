@@ -15,9 +15,9 @@ export const Route = createFileRoute("/_authenticated/app")({
 });
 
 const TIERS = [
-  { id: "noir", name: "Cabify Noir", eta: "3 min", mult: 1, seats: 3 },
-  { id: "grand", name: "Cabify Grand", eta: "5 min", mult: 1.7, seats: 6 },
-  { id: "volt", name: "Cabify Volt", eta: "4 min", mult: 1.2, seats: 4 },
+  { id: "noir", name: "BR Noir", eta: "3 min", mult: 1, seats: 3 },
+  { id: "grand", name: "BR Grand", eta: "5 min", mult: 1.7, seats: 6 },
+  { id: "volt", name: "BR Volt", eta: "4 min", mult: 1.2, seats: 4 },
 ];
 
 type LatLng = [number, number];
