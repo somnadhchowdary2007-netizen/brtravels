@@ -27,7 +27,7 @@ function NotFoundComponent() {
           to="/"
           className="mt-8 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground btn-magnetic"
         >
-          Return to Cabify
+          Return to BR Travels
         </Link>
       </div>
     </div>
@@ -76,14 +76,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Cabify — Rides, reimagined in gold." },
+      { title: "BR Travels — Rides, reimagined in gold." },
       {
         name: "description",
         content:
           "A premium ride-hailing experience. Book luxury cabs in seconds, track your driver in real time, and travel with intention.",
       },
       { name: "theme-color", content: "#0b0d14" },
-      { property: "og:title", content: "Cabify — Rides, reimagined in gold." },
+      { property: "og:title", content: "BR Travels — Rides, reimagined in gold." },
       {
         property: "og:description",
         content: "Premium ride-hailing. Real-time driver tracking. Cinematic experience.",

@@ -35,7 +35,7 @@ export function Nav() {
             C
           </span>
           <span className="font-display text-xl tracking-tight">
-            Cabify<span className="text-primary">.</span>
+            BR Travels<span className="text-primary">.</span>
           </span>
         </Link>
 

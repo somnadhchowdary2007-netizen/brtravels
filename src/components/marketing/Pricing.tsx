@@ -17,7 +17,7 @@ const plans = [
     cta: { href: "/auth", label: "Create account" },
   },
   {
-    name: "Cabify Gold",
+    name: "BR Gold",
     price: "$19/mo",
     sub: "For the ones who ride often.",
     features: [
@@ -44,7 +44,7 @@ const faqs = [
   { q: "Can I book in advance?", a: "Yes. Schedule up to 30 days ahead and we guarantee a driver ten minutes early." },
   { q: "Do you surge price?", a: "Never. Fares are transparent up-front and rain, weekends, or events don't change that." },
   { q: "How do I become a driver?", a: "Tap Drive with Us, complete the vetting flow, and you'll onboard within 72 hours." },
-  { q: "Is Cabify available where I live?", a: "We're live in 32 cities and expanding weekly. Sign in to see local availability." },
+  { q: "Is BR Travels available where I live?", a: "We're live in 32 cities and expanding weekly. Sign in to see local availability." },
 ];
 
 export function Pricing() {
