@@ -148,7 +148,7 @@ function DriverApp() {
     toast.success("Ride accepted. Head to pickup.");
   }
 
-  async function updateStatus(next: Ride["status"]) {
+  async function updateStatus(next: "arrived" | "in_progress" | "completed") {
     if (!active) return;
     const { data, error } = await supabase
       .from("rides")
