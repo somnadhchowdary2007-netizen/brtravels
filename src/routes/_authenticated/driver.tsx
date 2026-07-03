@@ -188,7 +188,7 @@ function DriverApp() {
             <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
           <span className="font-display text-sm">
-            Cabify<span className="text-primary">.</span> <span className="text-muted-foreground">Driver</span>
+            BR Travels<span className="text-primary">.</span> <span className="text-muted-foreground">Driver</span>
           </span>
           <button
             onClick={async () => {

@@ -11,7 +11,7 @@ export function Footer() {
               <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground font-display text-lg">
                 C
               </span>
-              <span className="font-display text-xl">Cabify<span className="text-primary">.</span></span>
+              <span className="font-display text-xl">BR Travels<span className="text-primary">.</span></span>
             </div>
             <p className="mt-6 max-w-sm text-sm text-muted-foreground">
               Premium ride-hailing. Curated fleet. Cinematic every mile.
