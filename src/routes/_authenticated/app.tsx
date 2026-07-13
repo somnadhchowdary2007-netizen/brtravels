@@ -215,7 +215,7 @@ function RiderApp() {
       </div>
 
       {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] p-4">
         <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between rounded-full glass px-4 py-2.5">
           <Link
             to="/"
@@ -243,7 +243,7 @@ function RiderApp() {
         initial={{ y: 400 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.2, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-        className="absolute inset-x-0 bottom-0 z-20"
+        className="absolute inset-x-0 bottom-0 z-[1000]"
       >
         <div className="mx-auto max-w-2xl">
           <div className="glass mx-3 mb-3 rounded-t-3xl border border-b-0 border-border/60 p-6 pb-8">
