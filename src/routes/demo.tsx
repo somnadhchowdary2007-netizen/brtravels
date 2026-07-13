@@ -150,7 +150,7 @@ function DemoApp() {
         initial={{ y: 400 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.2, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-        className="absolute inset-x-0 bottom-0 z-20"
+        className="absolute inset-x-0 bottom-0 z-[1000]"
       >
         <div className="mx-auto max-w-2xl">
           <div className="glass mx-3 mb-3 rounded-t-3xl border border-b-0 border-border/60 p-6 pb-8">
