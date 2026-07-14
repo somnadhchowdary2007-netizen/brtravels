@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Car, LogOut, MapPin, Navigation, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Car, LogOut, MapPin, Navigation, Phone, Search, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/use-auth";
 import { toast } from "sonner";
