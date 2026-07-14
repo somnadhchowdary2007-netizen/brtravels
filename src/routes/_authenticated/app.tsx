@@ -371,6 +371,23 @@ function RiderApp() {
                     </div>
                   )}
 
+                  {driverProfile && (ride.status === "accepted" || ride.status === "arrived" || ride.status === "in_progress") && (
+                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-primary/40 bg-primary/5 p-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Your driver</div>
+                        <div className="mt-1 font-display text-lg">{driverProfile.display_name ?? "Driver"}</div>
+                      </div>
+                      {driverProfile.phone && (
+                        <a
+                          href={`tel:${driverProfile.phone}`}
+                          className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
+                        >
+                          <Phone className="h-3.5 w-3.5" /> {driverProfile.phone}
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-6 flex gap-2">
                     {["completed", "cancelled"].includes(ride.status) ? (
                       <button
