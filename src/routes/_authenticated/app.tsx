@@ -162,6 +162,15 @@ function RiderApp() {
   // Subscribe to driver location
   useEffect(() => {
     if (!ride?.driver_id) return;
+    // fetch driver profile (name + phone)
+    supabase
+      .from("profiles")
+      .select("display_name, phone")
+      .eq("id", ride.driver_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setDriverProfile(data);
+      });
     // initial fetch
     supabase
       .from("driver_locations")
