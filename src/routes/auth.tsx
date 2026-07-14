@@ -17,6 +17,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,15 +31,25 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        if (!/^\+?[0-9\s\-()]{7,20}$/.test(phone.trim())) {
+          throw new Error("Please enter a valid phone number");
+        }
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin + "/app",
-            data: { full_name: name },
+            data: { full_name: name, phone: phone.trim() },
           },
         });
         if (error) throw error;
+        // Persist phone on profile (handle_new_user creates the row)
+        if (signUpData.user) {
+          await supabase
+            .from("profiles")
+            .update({ display_name: name, phone: phone.trim() })
+            .eq("id", signUpData.user.id);
+        }
         toast.success("Welcome to BR Travels. Redirecting…");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
