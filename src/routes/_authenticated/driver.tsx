@@ -36,9 +36,12 @@ function DriverApp() {
   const navigate = useNavigate();
   const [pos, setPos] = useState<LatLng>(DEFAULT_CENTER);
   const [online, setOnline] = useState(false);
+  const [goingOnline, setGoingOnline] = useState(false);
+  const [confirmOnline, setConfirmOnline] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [pending, setPending] = useState<Ride | null>(null);
   const [active, setActive] = useState<Ride | null>(null);
+  const [riderProfile, setRiderProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
   // Init user & role
