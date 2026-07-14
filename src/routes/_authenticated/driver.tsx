@@ -426,6 +426,23 @@ function DriverApp() {
                 </div>
               </div>
 
+              {riderProfile && (
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 p-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Rider</div>
+                    <div className="font-medium">{riderProfile.display_name ?? "Rider"}</div>
+                  </div>
+                  {riderProfile.phone && (
+                    <a
+                      href={`tel:${riderProfile.phone}`}
+                      className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
+                    >
+                      <Phone className="h-3.5 w-3.5" /> {riderProfile.phone}
+                    </a>
+                  )}
+                </div>
+              )}
+
               <div className="mt-6 grid gap-2">
                 {active.status === "accepted" && (
                   <button
