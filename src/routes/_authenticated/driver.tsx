@@ -104,6 +104,62 @@ function DriverApp() {
     setOnline(false);
   }, [userId]);
 
+  // Go online with retry: attempts geolocation permission + initial upsert
+  const goOnline = useCallback(async () => {
+    if (!userId) return;
+    setGoingOnline(true);
+    const attempt = async (n: number): Promise<boolean> => {
+      try {
+        const coords = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) return reject(new Error("Geolocation unavailable"));
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 6000,
+          });
+        });
+        const next: LatLng = [coords.coords.latitude, coords.coords.longitude];
+        setPos(next);
+        const { error } = await supabase.from("driver_locations").upsert({
+          driver_id: userId,
+          lat: next[0],
+          lng: next[1],
+          is_online: true,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        return true;
+      } catch (err) {
+        if (n < 2) {
+          toast.message(`Retrying… (${n + 1}/3)`);
+          await new Promise((r) => setTimeout(r, 1200));
+          return attempt(n + 1);
+        }
+        toast.error(err instanceof Error ? err.message : "Couldn't go online");
+        return false;
+      }
+    };
+    const ok = await attempt(0);
+    setGoingOnline(false);
+    if (ok) {
+      setOnline(true);
+      toast.success("You're live. Waiting for rides.");
+    }
+  }, [userId]);
+
+  // Fetch rider profile when active ride is set
+  useEffect(() => {
+    if (!active?.rider_id) {
+      setRiderProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("display_name, phone")
+      .eq("id", active.rider_id)
+      .maybeSingle()
+      .then(({ data }) => data && setRiderProfile(data));
+  }, [active?.rider_id]);
+
   // Listen for pending rides
   useEffect(() => {
     if (!online || active) return;
