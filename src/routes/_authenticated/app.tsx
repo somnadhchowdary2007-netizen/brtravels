@@ -56,6 +56,7 @@ function RiderApp() {
   const [tier, setTier] = useState("noir");
   const [ride, setRide] = useState<Ride | null>(null);
   const [driverPos, setDriverPos] = useState<LatLng | null>(null);
+  const [driverProfile, setDriverProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Get user location
