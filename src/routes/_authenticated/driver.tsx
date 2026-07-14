@@ -274,18 +274,61 @@ function DriverApp() {
         ) : (
           <motion.button
             layout
-            onClick={() => (online ? goOffline() : setOnline(true))}
-            className={`flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium ${
+            disabled={goingOnline}
+            onClick={() => (online ? goOffline() : setConfirmOnline(true))}
+            className={`flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium disabled:opacity-70 ${
               online
                 ? "bg-primary text-primary-foreground animate-pulse-gold"
                 : "border border-border bg-card"
             }`}
           >
-            <Power className="h-4 w-4" />
-            {online ? "You're online" : "Go online"}
+            {goingOnline ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+            {goingOnline ? "Going online…" : online ? "You're online" : "Go online"}
           </motion.button>
         )}
       </div>
+
+      {/* Confirm online modal */}
+      <AnimatePresence>
+        {confirmOnline && !online && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[1002] grid place-items-center bg-background/70 backdrop-blur-sm p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 20 }}
+              className="glass w-full max-w-sm rounded-3xl border border-primary/40 p-8"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">— Ready to drive?</p>
+              <h3 className="mt-3 font-display text-2xl">Go online now</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We'll share your live location with nearby riders while you're online. You can go offline anytime.
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setConfirmOnline(false)}
+                  className="rounded-full border border-border py-3 text-sm hover:bg-secondary"
+                >
+                  Not yet
+                </button>
+                <button
+                  onClick={async () => {
+                    setConfirmOnline(false);
+                    await goOnline();
+                  }}
+                  className="rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic"
+                >
+                  Go online
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Incoming ride modal */}
       <AnimatePresence>
