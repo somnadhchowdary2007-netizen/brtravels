@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Car, LogOut, MapPin, Navigation, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Car, LogOut, MapPin, Navigation, Phone, Search, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -56,6 +56,7 @@ function RiderApp() {
   const [tier, setTier] = useState("noir");
   const [ride, setRide] = useState<Ride | null>(null);
   const [driverPos, setDriverPos] = useState<LatLng | null>(null);
+  const [driverProfile, setDriverProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Get user location
@@ -161,6 +162,15 @@ function RiderApp() {
   // Subscribe to driver location
   useEffect(() => {
     if (!ride?.driver_id) return;
+    // fetch driver profile (name + phone)
+    supabase
+      .from("profiles")
+      .select("display_name, phone")
+      .eq("id", ride.driver_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setDriverProfile(data);
+      });
     // initial fetch
     supabase
       .from("driver_locations")
@@ -361,12 +371,30 @@ function RiderApp() {
                     </div>
                   )}
 
+                  {driverProfile && (ride.status === "accepted" || ride.status === "arrived" || ride.status === "in_progress") && (
+                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-primary/40 bg-primary/5 p-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Your driver</div>
+                        <div className="mt-1 font-display text-lg">{driverProfile.display_name ?? "Driver"}</div>
+                      </div>
+                      {driverProfile.phone && (
+                        <a
+                          href={`tel:${driverProfile.phone}`}
+                          className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
+                        >
+                          <Phone className="h-3.5 w-3.5" /> {driverProfile.phone}
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-6 flex gap-2">
                     {["completed", "cancelled"].includes(ride.status) ? (
                       <button
                         onClick={() => {
                           setRide(null);
                           setDriverPos(null);
+                          setDriverProfile(null);
                         }}
                         className="w-full rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic"
                       >

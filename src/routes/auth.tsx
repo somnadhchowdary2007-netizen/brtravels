@@ -17,6 +17,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,15 +31,25 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        if (!/^\+?[0-9\s\-()]{7,20}$/.test(phone.trim())) {
+          throw new Error("Please enter a valid phone number");
+        }
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin + "/app",
-            data: { full_name: name },
+            data: { full_name: name, phone: phone.trim() },
           },
         });
         if (error) throw error;
+        // Persist phone on profile (handle_new_user creates the row)
+        if (signUpData.user) {
+          await supabase
+            .from("profiles")
+            .update({ display_name: name, phone: phone.trim() })
+            .eq("id", signUpData.user.id);
+        }
         toast.success("Welcome to BR Travels. Redirecting…");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -159,6 +170,21 @@ function AuthPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-border/70 bg-secondary/40 px-4 py-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            )}
+            {mode === "signup" && (
+              <div>
+                <label className="mb-2 block text-xs uppercase tracking-widest text-muted-foreground">
+                  Phone
+                </label>
+                <input
+                  required
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1 555 000 0000"
                   className="w-full rounded-xl border border-border/70 bg-secondary/40 px-4 py-3 text-sm outline-none focus:border-primary"
                 />
               </div>

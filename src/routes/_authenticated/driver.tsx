@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Car, LogOut, Power } from "lucide-react";
+import { ArrowLeft, Car, Loader2, LogOut, Phone, Power } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -36,9 +36,12 @@ function DriverApp() {
   const navigate = useNavigate();
   const [pos, setPos] = useState<LatLng>(DEFAULT_CENTER);
   const [online, setOnline] = useState(false);
+  const [goingOnline, setGoingOnline] = useState(false);
+  const [confirmOnline, setConfirmOnline] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [pending, setPending] = useState<Ride | null>(null);
   const [active, setActive] = useState<Ride | null>(null);
+  const [riderProfile, setRiderProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
   // Init user & role
@@ -100,6 +103,62 @@ function DriverApp() {
     }
     setOnline(false);
   }, [userId]);
+
+  // Go online with retry: attempts geolocation permission + initial upsert
+  const goOnline = useCallback(async () => {
+    if (!userId) return;
+    setGoingOnline(true);
+    const attempt = async (n: number): Promise<boolean> => {
+      try {
+        const coords = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) return reject(new Error("Geolocation unavailable"));
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 6000,
+          });
+        });
+        const next: LatLng = [coords.coords.latitude, coords.coords.longitude];
+        setPos(next);
+        const { error } = await supabase.from("driver_locations").upsert({
+          driver_id: userId,
+          lat: next[0],
+          lng: next[1],
+          is_online: true,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        return true;
+      } catch (err) {
+        if (n < 2) {
+          toast.message(`Retrying… (${n + 1}/3)`);
+          await new Promise((r) => setTimeout(r, 1200));
+          return attempt(n + 1);
+        }
+        toast.error(err instanceof Error ? err.message : "Couldn't go online");
+        return false;
+      }
+    };
+    const ok = await attempt(0);
+    setGoingOnline(false);
+    if (ok) {
+      setOnline(true);
+      toast.success("You're live. Waiting for rides.");
+    }
+  }, [userId]);
+
+  // Fetch rider profile when active ride is set
+  useEffect(() => {
+    if (!active?.rider_id) {
+      setRiderProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("display_name, phone")
+      .eq("id", active.rider_id)
+      .maybeSingle()
+      .then(({ data }) => data && setRiderProfile(data));
+  }, [active?.rider_id]);
 
   // Listen for pending rides
   useEffect(() => {
@@ -215,18 +274,61 @@ function DriverApp() {
         ) : (
           <motion.button
             layout
-            onClick={() => (online ? goOffline() : setOnline(true))}
-            className={`flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium ${
+            disabled={goingOnline}
+            onClick={() => (online ? goOffline() : setConfirmOnline(true))}
+            className={`flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium disabled:opacity-70 ${
               online
                 ? "bg-primary text-primary-foreground animate-pulse-gold"
                 : "border border-border bg-card"
             }`}
           >
-            <Power className="h-4 w-4" />
-            {online ? "You're online" : "Go online"}
+            {goingOnline ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+            {goingOnline ? "Going online…" : online ? "You're online" : "Go online"}
           </motion.button>
         )}
       </div>
+
+      {/* Confirm online modal */}
+      <AnimatePresence>
+        {confirmOnline && !online && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[1002] grid place-items-center bg-background/70 backdrop-blur-sm p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 20 }}
+              className="glass w-full max-w-sm rounded-3xl border border-primary/40 p-8"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">— Ready to drive?</p>
+              <h3 className="mt-3 font-display text-2xl">Go online now</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We'll share your live location with nearby riders while you're online. You can go offline anytime.
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setConfirmOnline(false)}
+                  className="rounded-full border border-border py-3 text-sm hover:bg-secondary"
+                >
+                  Not yet
+                </button>
+                <button
+                  onClick={async () => {
+                    setConfirmOnline(false);
+                    await goOnline();
+                  }}
+                  className="rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic"
+                >
+                  Go online
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Incoming ride modal */}
       <AnimatePresence>
@@ -323,6 +425,23 @@ function DriverApp() {
                   <div>{active.dropoff_address}</div>
                 </div>
               </div>
+
+              {riderProfile && (
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 p-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Rider</div>
+                    <div className="font-medium">{riderProfile.display_name ?? "Rider"}</div>
+                  </div>
+                  {riderProfile.phone && (
+                    <a
+                      href={`tel:${riderProfile.phone}`}
+                      className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
+                    >
+                      <Phone className="h-3.5 w-3.5" /> {riderProfile.phone}
+                    </a>
+                  )}
+                </div>
+              )}
 
               <div className="mt-6 grid gap-2">
                 {active.status === "accepted" && (
