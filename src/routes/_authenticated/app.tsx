@@ -394,6 +394,7 @@ function RiderApp() {
                         onClick={() => {
                           setRide(null);
                           setDriverPos(null);
+                          setDriverProfile(null);
                         }}
                         className="w-full rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic"
                       >
