@@ -174,6 +174,21 @@ function AuthPage() {
                 />
               </div>
             )}
+            {mode === "signup" && (
+              <div>
+                <label className="mb-2 block text-xs uppercase tracking-widest text-muted-foreground">
+                  Phone
+                </label>
+                <input
+                  required
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1 555 000 0000"
+                  className="w-full rounded-xl border border-border/70 bg-secondary/40 px-4 py-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            )}
             <div>
               <label className="mb-2 block text-xs uppercase tracking-widest text-muted-foreground">
                 Email
