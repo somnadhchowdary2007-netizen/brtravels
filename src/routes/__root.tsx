@@ -86,14 +86,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "BR Travels — Rides, reimagined in gold." },
       {
         property: "og:description",
-        content: "Premium ride-hailing. Real-time driver tracking. Cinematic experience.",
+        content: "A premium ride-hailing experience. Book luxury cabs in seconds, track your driver in real time, and travel with intention.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "BR Travels — Rides, reimagined in gold." },
+      { name: "twitter:description", content: "A premium ride-hailing experience. Book luxury cabs in seconds, track your driver in real time, and travel with intention." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5d40a34a-501a-48fb-9aea-a9edacfe771c/id-preview-4f28492c--0e72df51-5473-4aab-bd26-75af41c14fc3.lovable.app-1783997239563.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5d40a34a-501a-48fb-9aea-a9edacfe771c/id-preview-4f28492c--0e72df51-5473-4aab-bd26-75af41c14fc3.lovable.app-1783997239563.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
