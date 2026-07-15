@@ -70,7 +70,7 @@ function DemoApp() {
   const { distanceKm, baseFare } = useMemo(() => {
     if (!pickup || !dropoff) return { distanceKm: 0, baseFare: 0 };
     const d = haversineKm(pickup, dropoff);
-    return { distanceKm: d, baseFare: Math.max(6, 3 + d * 2.5) };
+    return { distanceKm: d, baseFare: Math.max(99, 49 + d * 24) };
   }, [pickup, dropoff]);
 
   const activeTier = TIERS.find((x) => x.id === tier)!;

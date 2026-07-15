@@ -67,6 +67,7 @@ function DriverApp() {
   const [userId, setUserId] = useState<string | null>(null);
   const [pending, setPending] = useState<Ride | null>(null);
   const [active, setActive] = useState<Ride | null>(null);
+  const [pendingRiderProfile, setPendingRiderProfile] = useState<Profile | null>(null);
   const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
@@ -256,6 +257,20 @@ function DriverApp() {
       .maybeSingle()
       .then(({ data }) => data && setRiderProfile(data));
   }, [active?.rider_id]);
+
+  // Fetch masked rider contact for pending ride preview
+  useEffect(() => {
+    if (!pending?.rider_id) {
+      setPendingRiderProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("display_name, phone, phone_verified")
+      .eq("id", pending.rider_id)
+      .maybeSingle()
+      .then(({ data }) => data && setPendingRiderProfile(data));
+  }, [pending?.rider_id]);
 
   // Listen for pending rides
   useEffect(() => {
@@ -513,7 +528,9 @@ function DriverApp() {
               </div>
               <div className="mt-4 rounded-2xl border border-border/60 bg-secondary/30 p-4 text-sm">
                 <div className="text-xs text-muted-foreground">Rider phone</div>
-                <div className="mt-1 font-mono text-xs tracking-widest text-muted-foreground">Hidden until accepted</div>
+                <div className="mt-1 font-mono text-xs tracking-widest text-muted-foreground">
+                  {maskPhone(pendingRiderProfile?.phone)}
+                </div>
               </div>
               <div className="mt-8 grid grid-cols-2 gap-3">
                 <button
