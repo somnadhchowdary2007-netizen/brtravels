@@ -47,6 +47,17 @@ function maskPhone(phone?: string | null) {
   return `${phone.trim().startsWith("+") ? "+" : ""}••••••${digits.slice(-4)}`;
 }
 
+function normalizePhone(value: string) {
+  const compact = value.trim().replace(/[^\d+]/g, "");
+  if (compact.startsWith("+")) return `+${compact.slice(1).replace(/\D/g, "")}`;
+  const digits = compact.replace(/\D/g, "");
+  return digits.length === 10 ? `+91${digits}` : `+${digits}`;
+}
+
+function isValidPhone(value: string) {
+  return /^\+[1-9]\d{7,14}$/.test(normalizePhone(value));
+}
+
 function DriverApp() {
   const navigate = useNavigate();
   const [pos, setPos] = useState<LatLng>(DEFAULT_CENTER);
@@ -58,6 +69,7 @@ function DriverApp() {
   const [active, setActive] = useState<Ride | null>(null);
   const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
@@ -79,7 +91,10 @@ function DriverApp() {
         .select("display_name, phone, phone_verified")
         .eq("id", u.user.id)
         .maybeSingle();
-      if (p) setProfile(p);
+      if (p) {
+        setProfile(p);
+        setPhoneDraft(p.phone ?? "");
+      }
     })();
   }, []);
 
@@ -179,14 +194,22 @@ function DriverApp() {
   }, [userId, profile?.phone_verified]);
 
   async function sendPhoneOtp() {
-    if (!profile?.phone) {
-      toast.error("Add a phone number during signup first");
+    if (!isValidPhone(phoneDraft)) {
+      toast.error("Enter a valid phone number with country code");
       return;
     }
+    const normalizedPhone = normalizePhone(phoneDraft);
     setVerifyingPhone(true);
     try {
-      const { error } = await supabase.auth.updateUser({ phone: profile.phone });
+      if (!userId) throw new Error("Not signed in");
+      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
       if (error) throw error;
+      await supabase
+        .from("profiles")
+        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .eq("id", userId);
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
+      setPhoneDraft(normalizedPhone);
       toast.success("SMS OTP sent");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
@@ -196,11 +219,12 @@ function DriverApp() {
   }
 
   async function verifyPhoneOtp() {
-    if (!profile?.phone || !userId) return;
+    if (!isValidPhone(phoneDraft) || !userId) return;
+    const normalizedPhone = normalizePhone(phoneDraft);
     setVerifyingPhone(true);
     try {
       const { error } = await supabase.auth.verifyOtp({
-        phone: profile.phone,
+        phone: normalizedPhone,
         token: otpCode.trim(),
         type: "phone_change",
       });
@@ -209,7 +233,7 @@ function DriverApp() {
         .from("profiles")
         .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
         .eq("id", userId);
-      setProfile({ ...profile, phone_verified: true });
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
       setOtpCode("");
       toast.success("Phone verified");
     } catch (err) {
@@ -352,7 +376,15 @@ function DriverApp() {
               <div className="flex-1">
                 <div className="text-sm font-medium">Verify your phone to drive</div>
                 <div className="mt-1 text-xs text-muted-foreground">Riders see your full number only during active trips.</div>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 space-y-2">
+                  <input
+                    type="tel"
+                    value={phoneDraft}
+                    onChange={(e) => setPhoneDraft(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                  />
+                  <div className="flex gap-2">
                   <input
                     inputMode="numeric"
                     value={otpCode}
@@ -363,11 +395,12 @@ function DriverApp() {
                   <button
                     type="button"
                     onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
-                    disabled={verifyingPhone || !profile?.phone}
+                    disabled={verifyingPhone || !isValidPhone(phoneDraft)}
                     className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
                   >
                     {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
                   </button>
+                  </div>
                 </div>
               </div>
             </div>
