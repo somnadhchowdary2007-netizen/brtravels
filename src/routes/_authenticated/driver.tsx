@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Car, Loader2, LogOut, Phone, Power } from "lucide-react";
+import { ArrowLeft, Car, Loader2, LogOut, Phone, Power, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -32,6 +32,21 @@ interface Ride {
   tier: string;
 }
 
+interface Profile {
+  display_name: string | null;
+  phone: string | null;
+  phone_verified: boolean;
+}
+
+const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
+
+function maskPhone(phone?: string | null) {
+  if (!phone) return "Number hidden";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "••••";
+  return `${phone.trim().startsWith("+") ? "+" : ""}••••••${digits.slice(-4)}`;
+}
+
 function DriverApp() {
   const navigate = useNavigate();
   const [pos, setPos] = useState<LatLng>(DEFAULT_CENTER);
@@ -41,7 +56,10 @@ function DriverApp() {
   const [userId, setUserId] = useState<string | null>(null);
   const [pending, setPending] = useState<Ride | null>(null);
   const [active, setActive] = useState<Ride | null>(null);
-  const [riderProfile, setRiderProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
+  const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
   // Init user & role
@@ -56,12 +74,22 @@ function DriverApp() {
         .eq("user_id", u.user.id);
       const roles = (r ?? []).map((x) => x.role);
       setRole(roles.includes("driver") ? "driver" : "rider");
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("display_name, phone, phone_verified")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      if (p) setProfile(p);
     })();
   }, []);
 
   // Grant driver role on demand
   async function becomeDriver() {
     if (!userId) return;
+    if (!profile?.phone_verified) {
+      toast.error("Verify your phone number before driving");
+      return;
+    }
     const { error } = await supabase
       .from("user_roles")
       .insert({ user_id: userId, role: "driver" });
@@ -107,6 +135,10 @@ function DriverApp() {
   // Go online with retry: attempts geolocation permission + initial upsert
   const goOnline = useCallback(async () => {
     if (!userId) return;
+    if (!profile?.phone_verified) {
+      toast.error("Verify your phone number before going online");
+      return;
+    }
     setGoingOnline(true);
     const attempt = async (n: number): Promise<boolean> => {
       try {
@@ -144,7 +176,48 @@ function DriverApp() {
       setOnline(true);
       toast.success("You're live. Waiting for rides.");
     }
-  }, [userId]);
+  }, [userId, profile?.phone_verified]);
+
+  async function sendPhoneOtp() {
+    if (!profile?.phone) {
+      toast.error("Add a phone number during signup first");
+      return;
+    }
+    setVerifyingPhone(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ phone: profile.phone });
+      if (error) throw error;
+      toast.success("SMS OTP sent");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
+    } finally {
+      setVerifyingPhone(false);
+    }
+  }
+
+  async function verifyPhoneOtp() {
+    if (!profile?.phone || !userId) return;
+    setVerifyingPhone(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: profile.phone,
+        token: otpCode.trim(),
+        type: "phone_change",
+      });
+      if (error) throw error;
+      await supabase
+        .from("profiles")
+        .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      setProfile({ ...profile, phone_verified: true });
+      setOtpCode("");
+      toast.success("Phone verified");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "OTP verification failed");
+    } finally {
+      setVerifyingPhone(false);
+    }
+  }
 
   // Fetch rider profile when active ride is set
   useEffect(() => {
@@ -154,7 +227,7 @@ function DriverApp() {
     }
     supabase
       .from("profiles")
-      .select("display_name, phone")
+        .select("display_name, phone, phone_verified")
       .eq("id", active.rider_id)
       .maybeSingle()
       .then(({ data }) => data && setRiderProfile(data));
@@ -162,7 +235,7 @@ function DriverApp() {
 
   // Listen for pending rides
   useEffect(() => {
-    if (!online || active) return;
+    if (!online || active || !profile?.phone_verified) return;
     // initial fetch
     supabase
       .from("rides")
@@ -186,10 +259,14 @@ function DriverApp() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [online, active]);
+  }, [online, active, profile?.phone_verified]);
 
   async function acceptRide() {
     if (!pending || !userId) return;
+    if (!profile?.phone_verified) {
+      toast.error("Verify your phone number before accepting rides");
+      return;
+    }
     const { data, error } = await supabase
       .from("rides")
       .update({ driver_id: userId, status: "accepted" })
@@ -209,6 +286,10 @@ function DriverApp() {
 
   async function updateStatus(next: "arrived" | "in_progress" | "completed") {
     if (!active) return;
+    if (!profile?.phone_verified) {
+      toast.error("Verify your phone number before updating rides");
+      return;
+    }
     const { data, error } = await supabase
       .from("rides")
       .update({ status: next })
@@ -264,7 +345,34 @@ function DriverApp() {
 
       {/* Online toggle */}
       <div className="absolute left-1/2 top-24 z-[1000] -translate-x-1/2">
-        {role !== "driver" ? (
+        {!profile?.phone_verified ? (
+          <div className="glass w-[min(92vw,28rem)] rounded-3xl border border-primary/40 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <div className="text-sm font-medium">Verify your phone to drive</div>
+                <div className="mt-1 text-xs text-muted-foreground">Riders see your full number only during active trips.</div>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    inputMode="numeric"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="OTP"
+                    className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
+                    disabled={verifyingPhone || !profile?.phone}
+                    className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                  >
+                    {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : role !== "driver" ? (
           <button
             onClick={becomeDriver}
             className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground btn-magnetic"
@@ -349,7 +457,7 @@ function DriverApp() {
                 — Incoming ride
               </p>
               <div className="mt-4 flex items-center justify-between">
-                <h3 className="font-display text-3xl">${pending.fare_estimate}</h3>
+                <h3 className="font-display text-3xl">₹{pending.fare_estimate}</h3>
                 <span className="rounded-full bg-primary/20 px-3 py-1 text-xs text-primary">
                   {pending.tier}
                 </span>
@@ -369,6 +477,10 @@ function DriverApp() {
                     <div>{pending.dropoff_address}</div>
                   </div>
                 </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-border/60 bg-secondary/30 p-4 text-sm">
+                <div className="text-xs text-muted-foreground">Rider phone</div>
+                <div className="mt-1 font-mono text-xs tracking-widest text-muted-foreground">Hidden until accepted</div>
               </div>
               <div className="mt-8 grid grid-cols-2 gap-3">
                 <button
@@ -426,19 +538,24 @@ function DriverApp() {
                 </div>
               </div>
 
-              {riderProfile && (
+              {riderProfile && ACTIVE_RIDE_STATUSES.includes(active.status) && (
                 <div className="mt-3 flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 p-3">
                   <div>
                     <div className="text-xs text-muted-foreground">Rider</div>
                     <div className="font-medium">{riderProfile.display_name ?? "Rider"}</div>
                   </div>
-                  {riderProfile.phone && (
+                  {riderProfile.phone && riderProfile.phone_verified && (
                     <a
                       href={`tel:${riderProfile.phone}`}
                       className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
                     >
                       <Phone className="h-3.5 w-3.5" /> {riderProfile.phone}
                     </a>
+                  )}
+                  {(!riderProfile.phone || !riderProfile.phone_verified) && (
+                    <span className="rounded-full border border-border px-4 py-2 text-xs text-muted-foreground">
+                      {maskPhone(riderProfile.phone)}
+                    </span>
                   )}
                 </div>
               )}
