@@ -50,6 +50,17 @@ function maskPhone(phone?: string | null) {
   return `${phone.trim().startsWith("+") ? "+" : ""}••••••${digits.slice(-4)}`;
 }
 
+function normalizePhone(value: string) {
+  const compact = value.trim().replace(/[^\d+]/g, "");
+  if (compact.startsWith("+")) return `+${compact.slice(1).replace(/\D/g, "")}`;
+  const digits = compact.replace(/\D/g, "");
+  return digits.length === 10 ? `+91${digits}` : `+${digits}`;
+}
+
+function isValidPhone(value: string) {
+  return /^\+[1-9]\d{7,14}$/.test(normalizePhone(value));
+}
+
 function haversineKm(a: LatLng, b: LatLng) {
   const R = 6371;
   const dLat = ((b[0] - a[0]) * Math.PI) / 180;
@@ -73,6 +84,7 @@ function RiderApp() {
   const [driverPos, setDriverPos] = useState<LatLng | null>(null);
   const [driverProfile, setDriverProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,7 +98,10 @@ function RiderApp() {
         .select("display_name, phone, phone_verified")
         .eq("id", userRes.user.id)
         .maybeSingle();
-      if (data) setProfile(data);
+      if (data) {
+        setProfile(data);
+        setPhoneDraft(data.phone ?? "");
+      }
     })();
   }, []);
 
@@ -110,7 +125,7 @@ function RiderApp() {
   const { distanceKm, baseFare } = useMemo(() => {
     if (!pickup || !dropoff) return { distanceKm: 0, baseFare: 0 };
     const d = haversineKm(pickup, dropoff);
-    return { distanceKm: d, baseFare: Math.max(6, 3 + d * 2.5) };
+    return { distanceKm: d, baseFare: Math.max(99, 49 + d * 24) };
   }, [pickup, dropoff]);
 
   // Search dropoff via OpenStreetMap Nominatim
@@ -175,14 +190,23 @@ function RiderApp() {
   }
 
   async function sendPhoneOtp() {
-    if (!profile?.phone) {
-      toast.error("Add a phone number during signup first");
+    if (!isValidPhone(phoneDraft)) {
+      toast.error("Enter a valid phone number with country code");
       return;
     }
+    const normalizedPhone = normalizePhone(phoneDraft);
     setVerifyingPhone(true);
     try {
-      const { error } = await supabase.auth.updateUser({ phone: profile.phone });
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) throw new Error("Not signed in");
+      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
       if (error) throw error;
+      await supabase
+        .from("profiles")
+        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .eq("id", userRes.user.id);
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
+      setPhoneDraft(normalizedPhone);
       toast.success("SMS OTP sent");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
@@ -192,13 +216,14 @@ function RiderApp() {
   }
 
   async function verifyPhoneOtp() {
-    if (!profile?.phone) return;
+    if (!isValidPhone(phoneDraft)) return;
+    const normalizedPhone = normalizePhone(phoneDraft);
     setVerifyingPhone(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
       const { error } = await supabase.auth.verifyOtp({
-        phone: profile.phone,
+        phone: normalizedPhone,
         token: otpCode.trim(),
         type: "phone_change",
       });
@@ -207,7 +232,7 @@ function RiderApp() {
         .from("profiles")
         .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
         .eq("id", userRes.user.id);
-      setProfile({ ...profile, phone_verified: true });
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
       setOtpCode("");
       toast.success("Phone verified");
     } catch (err) {
@@ -382,6 +407,13 @@ function RiderApp() {
                           <div className="mt-1 text-xs text-muted-foreground">We'll show your number to the driver only after they accept your ride.</div>
                           <div className="mt-3 flex gap-2">
                             <input
+                              type="tel"
+                              value={phoneDraft}
+                              onChange={(e) => setPhoneDraft(e.target.value)}
+                              placeholder="+91 98765 43210"
+                              className="mb-2 w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                            />
+                            <input
                               inputMode="numeric"
                               value={otpCode}
                               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
@@ -391,7 +423,7 @@ function RiderApp() {
                             <button
                               type="button"
                               onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
-                              disabled={verifyingPhone || !profile?.phone}
+                              disabled={verifyingPhone || !isValidPhone(phoneDraft)}
                               className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
                             >
                               {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
