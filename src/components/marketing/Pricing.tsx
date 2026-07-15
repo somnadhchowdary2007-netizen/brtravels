@@ -18,12 +18,12 @@ const plans = [
   },
   {
     name: "BR Gold",
-    price: "$19/mo",
+    price: "₹499/mo",
     sub: "For the ones who ride often.",
     features: [
       "15% off every ride",
       "Priority driver matching",
-      "Free upgrades on Noir",
+      "Free upgrades on MINI",
       "Airport meet & greet",
       "Guest passes ×3 / mo",
     ],

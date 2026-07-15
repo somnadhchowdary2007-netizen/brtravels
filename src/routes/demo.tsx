@@ -19,9 +19,9 @@ export const Route = createFileRoute("/demo")({
 });
 
 const TIERS = [
-  { id: "noir", name: "BR Noir", eta: "3 min", mult: 1, seats: 3 },
+  { id: "mini", name: "BR MINI", eta: "3 min", mult: 1, seats: 3 },
   { id: "grand", name: "BR Grand", eta: "5 min", mult: 1.7, seats: 6 },
-  { id: "volt", name: "BR Volt", eta: "4 min", mult: 1.2, seats: 4 },
+  { id: "premium", name: "BR Premium", eta: "4 min", mult: 1.2, seats: 4 },
 ];
 
 type LatLng = [number, number];
@@ -47,7 +47,7 @@ function DemoApp() {
   const [dropoff, setDropoff] = useState<LatLng | null>(null);
   const [pickupText, setPickupText] = useState("Current location");
   const [dropoffText, setDropoffText] = useState("");
-  const [tier, setTier] = useState("noir");
+  const [tier, setTier] = useState("mini");
   const [phase, setPhase] = useState<Phase>("idle");
   const [driverPos, setDriverPos] = useState<LatLng | null>(null);
 
@@ -207,7 +207,7 @@ function DemoApp() {
                             <span className="font-mono text-[10px] text-muted-foreground">{t.eta}</span>
                           </div>
                           <div className="mt-3 text-xs font-medium">{t.name.split(" ")[1]}</div>
-                          <div className="mt-1 font-display text-lg">{dropoff ? `$${tFare.toFixed(0)}` : "—"}</div>
+                          <div className="mt-1 font-display text-lg">{dropoff ? `₹${tFare.toFixed(0)}` : "—"}</div>
                         </button>
                       );
                     })}
@@ -262,7 +262,7 @@ function DemoApp() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">Fare</div>
-                      <div className="font-display text-2xl">${fare.toFixed(0)}</div>
+                      <div className="font-display text-2xl">₹{fare.toFixed(0)}</div>
                     </div>
                   </div>
 

@@ -5,23 +5,23 @@ import electric from "@/assets/fleet-electric.jpg";
 
 const tiers = [
   {
-    name: "BR Noir",
+    name: "BR MINI",
     tag: "Signature sedan",
-    price: "from $18",
+    price: "from ₹499",
     img: sedan,
     features: ["Executive sedan", "1–3 passengers", "Bottled water", "Silent mode"],
   },
   {
     name: "BR Grand",
     tag: "Full-size SUV",
-    price: "from $32",
+    price: "from ₹899",
     img: suv,
     features: ["Luxury SUV", "1–6 passengers", "Extra luggage", "Champagne on request"],
   },
   {
-    name: "BR Volt",
+    name: "BR Premium",
     tag: "All-electric",
-    price: "from $22",
+    price: "from ₹699",
     img: electric,
     features: ["Zero emissions", "Panoramic roof", "Premium audio", "Carbon negative fleet"],
   },
