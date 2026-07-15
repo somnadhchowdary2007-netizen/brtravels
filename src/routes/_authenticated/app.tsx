@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Car, LogOut, MapPin, Navigation, Phone, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Car, Loader2, LogOut, MapPin, Navigation, Phone, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -15,9 +15,9 @@ export const Route = createFileRoute("/_authenticated/app")({
 });
 
 const TIERS = [
-  { id: "noir", name: "BR Noir", eta: "3 min", mult: 1, seats: 3 },
+  { id: "mini", name: "BR MINI", eta: "3 min", mult: 1, seats: 3 },
   { id: "grand", name: "BR Grand", eta: "5 min", mult: 1.7, seats: 6 },
-  { id: "volt", name: "BR Volt", eta: "4 min", mult: 1.2, seats: 4 },
+  { id: "premium", name: "BR Premium", eta: "4 min", mult: 1.2, seats: 4 },
 ];
 
 type LatLng = [number, number];
@@ -33,6 +33,32 @@ interface Ride {
   dropoff_lng: number;
   fare_estimate: number;
   tier: string;
+}
+
+interface Profile {
+  display_name: string | null;
+  phone: string | null;
+  phone_verified: boolean;
+}
+
+const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
+
+function maskPhone(phone?: string | null) {
+  if (!phone) return "Number hidden";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "••••";
+  return `${phone.trim().startsWith("+") ? "+" : ""}••••••${digits.slice(-4)}`;
+}
+
+function normalizePhone(value: string) {
+  const compact = value.trim().replace(/[^\d+]/g, "");
+  if (compact.startsWith("+")) return `+${compact.slice(1).replace(/\D/g, "")}`;
+  const digits = compact.replace(/\D/g, "");
+  return digits.length === 10 ? `+91${digits}` : `+${digits}`;
+}
+
+function isValidPhone(value: string) {
+  return /^\+[1-9]\d{7,14}$/.test(normalizePhone(value));
 }
 
 function haversineKm(a: LatLng, b: LatLng) {
@@ -53,11 +79,31 @@ function RiderApp() {
   const [dropoff, setDropoff] = useState<LatLng | null>(null);
   const [pickupText, setPickupText] = useState("Current location");
   const [dropoffText, setDropoffText] = useState("");
-  const [tier, setTier] = useState("noir");
+  const [tier, setTier] = useState("mini");
   const [ride, setRide] = useState<Ride | null>(null);
   const [driverPos, setDriverPos] = useState<LatLng | null>(null);
-  const [driverProfile, setDriverProfile] = useState<{ display_name: string | null; phone: string | null } | null>(null);
+  const [driverProfile, setDriverProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, phone, phone_verified")
+        .eq("id", userRes.user.id)
+        .maybeSingle();
+      if (data) {
+        setProfile(data);
+        setPhoneDraft(data.phone ?? "");
+      }
+    })();
+  }, []);
 
   // Get user location
   useEffect(() => {
@@ -79,7 +125,7 @@ function RiderApp() {
   const { distanceKm, baseFare } = useMemo(() => {
     if (!pickup || !dropoff) return { distanceKm: 0, baseFare: 0 };
     const d = haversineKm(pickup, dropoff);
-    return { distanceKm: d, baseFare: Math.max(6, 3 + d * 2.5) };
+    return { distanceKm: d, baseFare: Math.max(99, 49 + d * 24) };
   }, [pickup, dropoff]);
 
   // Search dropoff via OpenStreetMap Nominatim
@@ -104,6 +150,10 @@ function RiderApp() {
   }
 
   async function bookRide() {
+    if (!profile?.phone_verified) {
+      toast.error("Verify your phone number before booking a ride");
+      return;
+    }
     if (!pickup || !dropoff) {
       toast.error("Set a destination first");
       return;
@@ -139,6 +189,59 @@ function RiderApp() {
     }
   }
 
+  async function sendPhoneOtp() {
+    if (!isValidPhone(phoneDraft)) {
+      toast.error("Enter a valid phone number with country code");
+      return;
+    }
+    const normalizedPhone = normalizePhone(phoneDraft);
+    setVerifyingPhone(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) throw new Error("Not signed in");
+      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
+      if (error) throw error;
+      await supabase
+        .from("profiles")
+        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .eq("id", userRes.user.id);
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
+      setPhoneDraft(normalizedPhone);
+      toast.success("SMS OTP sent");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
+    } finally {
+      setVerifyingPhone(false);
+    }
+  }
+
+  async function verifyPhoneOtp() {
+    if (!isValidPhone(phoneDraft)) return;
+    const normalizedPhone = normalizePhone(phoneDraft);
+    setVerifyingPhone(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) throw new Error("Not signed in");
+      const { error } = await supabase.auth.verifyOtp({
+        phone: normalizedPhone,
+        token: otpCode.trim(),
+        type: "phone_change",
+      });
+      if (error) throw error;
+      await supabase
+        .from("profiles")
+        .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
+        .eq("id", userRes.user.id);
+      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
+      setOtpCode("");
+      toast.success("Phone verified");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "OTP verification failed");
+    } finally {
+      setVerifyingPhone(false);
+    }
+  }
+
   // Subscribe to ride updates
   useEffect(() => {
     if (!ride?.id) return;
@@ -165,7 +268,7 @@ function RiderApp() {
     // fetch driver profile (name + phone)
     supabase
       .from("profiles")
-      .select("display_name, phone")
+        .select("display_name, phone, phone_verified")
       .eq("id", ride.driver_id)
       .maybeSingle()
       .then(({ data }) => {
@@ -295,6 +398,44 @@ function RiderApp() {
                     </div>
                   </div>
 
+                  {!profile?.phone_verified && (
+                    <div className="mt-6 rounded-2xl border border-primary/40 bg-primary/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium">Verify your phone to book</div>
+                          <div className="mt-1 text-xs text-muted-foreground">We'll show your number to the driver only after they accept your ride.</div>
+                          <div className="mt-3 space-y-2">
+                            <input
+                              type="tel"
+                              value={phoneDraft}
+                              onChange={(e) => setPhoneDraft(e.target.value)}
+                              placeholder="+91 98765 43210"
+                              className="w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                inputMode="numeric"
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                                placeholder="OTP"
+                                className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                              />
+                              <button
+                                type="button"
+                                onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
+                                disabled={verifyingPhone || !isValidPhone(phoneDraft)}
+                                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                              >
+                                {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-6 grid grid-cols-3 gap-2">
                     {TIERS.map((t) => {
                       const active = tier === t.id;
@@ -317,7 +458,7 @@ function RiderApp() {
                           </div>
                           <div className="mt-3 text-xs font-medium">{t.name.split(" ")[1]}</div>
                           <div className="mt-1 font-display text-lg">
-                            {dropoff ? `$${fare.toFixed(0)}` : "—"}
+                            {dropoff ? `₹${fare.toFixed(0)}` : "—"}
                           </div>
                         </button>
                       );
@@ -326,7 +467,7 @@ function RiderApp() {
 
                   <button
                     onClick={bookRide}
-                    disabled={!dropoff || loading}
+                    disabled={!dropoff || loading || !profile?.phone_verified}
                     className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-medium text-primary-foreground btn-magnetic disabled:opacity-40"
                   >
                     <Sparkles className="h-4 w-4" />
@@ -351,7 +492,7 @@ function RiderApp() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">Fare</div>
-                      <div className="font-display text-2xl">${ride.fare_estimate}</div>
+                      <div className="font-display text-2xl">₹{ride.fare_estimate}</div>
                     </div>
                   </div>
 
@@ -371,19 +512,24 @@ function RiderApp() {
                     </div>
                   )}
 
-                  {driverProfile && (ride.status === "accepted" || ride.status === "arrived" || ride.status === "in_progress") && (
+                  {driverProfile && ACTIVE_RIDE_STATUSES.includes(ride.status) && (
                     <div className="mt-3 flex items-center justify-between rounded-2xl border border-primary/40 bg-primary/5 p-4">
                       <div>
                         <div className="text-xs text-muted-foreground">Your driver</div>
                         <div className="mt-1 font-display text-lg">{driverProfile.display_name ?? "Driver"}</div>
                       </div>
-                      {driverProfile.phone && (
+                      {driverProfile.phone && driverProfile.phone_verified && (
                         <a
                           href={`tel:${driverProfile.phone}`}
                           className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
                         >
                           <Phone className="h-3.5 w-3.5" /> {driverProfile.phone}
                         </a>
+                      )}
+                      {(!driverProfile.phone || !driverProfile.phone_verified) && (
+                        <span className="rounded-full border border-border px-4 py-2 text-xs text-muted-foreground">
+                          {maskPhone(driverProfile.phone)}
+                        </span>
                       )}
                     </div>
                   )}

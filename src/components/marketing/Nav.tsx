@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, signOut } from "@/hooks/use-auth";
+import logoAsset from "@/assets/br-travels-logo.png.asset.json";
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -31,9 +32,7 @@ export function Nav() {
         style={scrolled ? { paddingLeft: "1.25rem", paddingRight: "1.25rem" } : {}}
       >
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground font-display text-lg font-semibold">
-            C
-          </span>
+          <img src={logoAsset.url} alt="BR Travels logo" className="h-10 w-10 rounded-full object-cover" />
           <span className="font-display text-xl tracking-tight">
             BR Travels<span className="text-primary">.</span>
           </span>

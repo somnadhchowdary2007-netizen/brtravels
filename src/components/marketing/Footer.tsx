@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Instagram, Twitter, Linkedin } from "lucide-react";
+import logoAsset from "@/assets/br-travels-logo.png.asset.json";
 
 export function Footer() {
   return (
@@ -8,9 +9,7 @@ export function Footer() {
         <div className="grid gap-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground font-display text-lg">
-                C
-              </span>
+              <img src={logoAsset.url} alt="BR Travels logo" className="h-10 w-10 rounded-full object-cover" />
               <span className="font-display text-xl">BR Travels<span className="text-primary">.</span></span>
             </div>
             <p className="mt-6 max-w-sm text-sm text-muted-foreground">
