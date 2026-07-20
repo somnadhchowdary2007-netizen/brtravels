@@ -9,7 +9,6 @@ const RideMap = lazy(() =>
 );
 
 export const Route = createFileRoute("/rider")({
-  ssr: false,
   head: () => ({
     meta: [
       { title: "BR Travels — Live Demo" },
