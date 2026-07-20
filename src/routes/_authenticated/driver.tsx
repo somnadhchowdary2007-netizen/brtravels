@@ -71,7 +71,7 @@ function DriverApp() {
   const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [otpCode, setOtpCode] = useState("");
+  const [phoneSaveTick, setPhoneSaveTick] = useState(0);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
@@ -102,8 +102,8 @@ function DriverApp() {
   // Grant driver role on demand
   async function becomeDriver() {
     if (!userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before driving");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before driving");
       return;
     }
     const { error } = await supabase
@@ -151,8 +151,8 @@ function DriverApp() {
   // Go online with retry: attempts geolocation permission + initial upsert
   const goOnline = useCallback(async () => {
     if (!userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before going online");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before going online");
       return;
     }
     setGoingOnline(true);
@@ -192,7 +192,7 @@ function DriverApp() {
       setOnline(true);
       toast.success("You're live. Waiting for rides.");
     }
-  }, [userId, profile?.phone_verified]);
+  }, [userId, profile?.phone]);
 
   async function savePhone() {
     if (!isValidPhone(phoneDraft)) {
@@ -257,7 +257,7 @@ function DriverApp() {
 
   // Listen for pending rides
   useEffect(() => {
-    if (!online || active || !profile?.phone_verified) return;
+    if (!online || active) return;
     // initial fetch
     supabase
       .from("rides")
@@ -281,14 +281,11 @@ function DriverApp() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [online, active, profile?.phone_verified]);
+  }, [online, active]);
 
   async function acceptRide() {
     if (!pending || !userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before accepting rides");
-      return;
-    }
+    void phoneSaveTick;
     const { data, error } = await supabase
       .from("rides")
       .update({ driver_id: userId, status: "accepted" })
@@ -308,10 +305,6 @@ function DriverApp() {
 
   async function updateStatus(next: "arrived" | "in_progress" | "completed") {
     if (!active) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before updating rides");
-      return;
-    }
     const { data, error } = await supabase
       .from("rides")
       .update({ status: next })
@@ -568,15 +561,14 @@ function DriverApp() {
                     <div className="text-xs text-muted-foreground">Rider</div>
                     <div className="font-medium">{riderProfile.display_name ?? "Rider"}</div>
                   </div>
-                  {riderProfile.phone && riderProfile.phone_verified && (
+                  {riderProfile.phone ? (
                     <a
                       href={`tel:${riderProfile.phone}`}
                       className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
                     >
                       <Phone className="h-3.5 w-3.5" /> {riderProfile.phone}
                     </a>
-                  )}
-                  {(!riderProfile.phone || !riderProfile.phone_verified) && (
+                  ) : (
                     <span className="rounded-full border border-border px-4 py-2 text-xs text-muted-foreground">
                       {maskPhone(riderProfile.phone)}
                     </span>
