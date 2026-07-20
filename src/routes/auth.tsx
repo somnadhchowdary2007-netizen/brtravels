@@ -29,10 +29,6 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [pendingPhone, setPendingPhone] = useState("");
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
-  const [otpStep, setOtpStep] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -59,24 +55,23 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        if (!signUpData.session) {
-          toast.success("Account created. Sign in after confirming your email to verify your phone.");
-          setMode("signin");
-          return;
-        }
-        const { error: otpError } = await supabase.auth.updateUser({ phone: normalizedPhone });
-        if (otpError) throw otpError;
         if (signUpData.user) {
           await supabase
             .from("profiles")
-            .update({ display_name: name, phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+            .update({
+              display_name: name,
+              phone: normalizedPhone,
+              phone_verified: true,
+              phone_verified_at: new Date().toISOString(),
+            })
             .eq("id", signUpData.user.id);
-          setPendingUserId(signUpData.user.id);
         }
-        setPendingPhone(normalizedPhone);
-        setOtpStep(true);
-        toast.success("SMS OTP sent. Verify your number to continue.");
-        return;
+        if (!signUpData.session) {
+          toast.success("Account created. Check your email to confirm, then sign in.");
+          setMode("signin");
+          return;
+        }
+        toast.success("Welcome to BR Travels.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -85,44 +80,6 @@ function AuthPage() {
       navigate({ to: "/app" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    if (!pendingPhone || !pendingUserId) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: pendingPhone,
-        token: otpCode.trim(),
-        type: "phone_change",
-      });
-      if (error) throw error;
-      await supabase
-        .from("profiles")
-        .update({ phone: pendingPhone, phone_verified: true, phone_verified_at: new Date().toISOString() })
-        .eq("id", pendingUserId);
-      toast.success("Phone verified. Welcome to BR Travels.");
-      navigate({ to: "/app" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "OTP verification failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resendOtp() {
-    if (!pendingPhone) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ phone: pendingPhone });
-      if (error) throw error;
-      toast.success("SMS OTP sent again.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't resend OTP");
     } finally {
       setLoading(false);
     }
@@ -142,6 +99,7 @@ function AuthPage() {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="relative grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
