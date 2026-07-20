@@ -377,38 +377,29 @@ function RiderApp() {
                     </div>
                   </div>
 
-                  {!profile?.phone_verified && (
+                  {!profile?.phone && (
                     <div className="mt-6 rounded-2xl border border-primary/40 bg-primary/5 p-4">
                       <div className="flex items-start gap-3">
                         <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
                         <div className="flex-1">
-                          <div className="text-sm font-medium">Verify your phone to book</div>
-                          <div className="mt-1 text-xs text-muted-foreground">We'll show your number to the driver only after they accept your ride.</div>
-                          <div className="mt-3 space-y-2">
+                          <div className="text-sm font-medium">Add your phone to book</div>
+                          <div className="mt-1 text-xs text-muted-foreground">Your driver will see it only after they accept your ride.</div>
+                          <div className="mt-3 flex gap-2">
                             <input
                               type="tel"
                               value={phoneDraft}
                               onChange={(e) => setPhoneDraft(e.target.value)}
                               placeholder="+91 98765 43210"
-                              className="w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                              className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
                             />
-                            <div className="flex gap-2">
-                              <input
-                                inputMode="numeric"
-                                value={otpCode}
-                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                                placeholder="OTP"
-                                className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
-                              />
-                              <button
-                                type="button"
-                                onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
-                                disabled={verifyingPhone || !isValidPhone(phoneDraft)}
-                                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
-                              >
-                                {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={savePhone}
+                              disabled={verifyingPhone || !isValidPhone(phoneDraft)}
+                              className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                            >
+                              {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                            </button>
                           </div>
                         </div>
                       </div>
