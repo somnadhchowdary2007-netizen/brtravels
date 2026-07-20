@@ -182,50 +182,6 @@ function AuthPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          {otpStep ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm font-medium">Verify phone number</div>
-                    <div className="text-xs text-muted-foreground">OTP sent to {pendingPhone}</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="mb-2 block text-xs uppercase tracking-widest text-muted-foreground">
-                  SMS OTP
-                </label>
-                <input
-                  required
-                  inputMode="numeric"
-                  minLength={4}
-                  maxLength={8}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full rounded-xl border border-border/70 bg-secondary/40 px-4 py-3 text-sm tracking-[0.35em] outline-none focus:border-primary"
-                  placeholder="000000"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic disabled:opacity-60"
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Verify & continue
-              </button>
-              <button
-                type="button"
-                onClick={resendOtp}
-                disabled={loading}
-                className="w-full rounded-full border border-border py-3 text-sm hover:bg-secondary disabled:opacity-60"
-              >
-                Resend OTP
-              </button>
-            </form>
-          ) : (
           <form onSubmit={handleEmail} className="space-y-4">
             {mode === "signup" && (
               <div>
@@ -289,7 +245,7 @@ function AuthPage() {
               {mode === "signin" ? "Sign in" : "Create account"}
             </button>
           </form>
-          )}
+
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             Driver? <Link to="/driver" className="text-primary hover:underline">Enter driver mode</Link>
