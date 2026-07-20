@@ -71,7 +71,7 @@ function DriverApp() {
   const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [phoneSaveTick, setPhoneSaveTick] = useState(0);
+  
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
@@ -285,7 +285,6 @@ function DriverApp() {
 
   async function acceptRide() {
     if (!pending || !userId) return;
-    void phoneSaveTick;
     const { data, error } = await supabase
       .from("rides")
       .update({ driver_id: userId, status: "accepted" })
