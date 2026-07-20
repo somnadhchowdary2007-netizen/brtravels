@@ -85,7 +85,6 @@ function RiderApp() {
   const [driverProfile, setDriverProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [otpCode, setOtpCode] = useState("");
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -150,8 +149,8 @@ function RiderApp() {
   }
 
   async function bookRide() {
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before booking a ride");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before booking a ride");
       return;
     }
     if (!pickup || !dropoff) {
@@ -189,7 +188,7 @@ function RiderApp() {
     }
   }
 
-  async function sendPhoneOtp() {
+  async function savePhone() {
     if (!isValidPhone(phoneDraft)) {
       toast.error("Enter a valid phone number with country code");
       return;
@@ -199,44 +198,24 @@ function RiderApp() {
     try {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
-      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
-      if (error) throw error;
-      await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .update({
+          phone: normalizedPhone,
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+        })
         .eq("id", userRes.user.id);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
-      setPhoneDraft(normalizedPhone);
-      toast.success("SMS OTP sent");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
-    } finally {
-      setVerifyingPhone(false);
-    }
-  }
-
-  async function verifyPhoneOtp() {
-    if (!isValidPhone(phoneDraft)) return;
-    const normalizedPhone = normalizePhone(phoneDraft);
-    setVerifyingPhone(true);
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      if (!userRes.user) throw new Error("Not signed in");
-      const { error } = await supabase.auth.verifyOtp({
+      if (error) throw error;
+      setProfile({
+        display_name: profile?.display_name ?? null,
         phone: normalizedPhone,
-        token: otpCode.trim(),
-        type: "phone_change",
+        phone_verified: true,
       });
-      if (error) throw error;
-      await supabase
-        .from("profiles")
-        .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
-        .eq("id", userRes.user.id);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
-      setOtpCode("");
-      toast.success("Phone verified");
+      setPhoneDraft(normalizedPhone);
+      toast.success("Phone saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "OTP verification failed");
+      toast.error(err instanceof Error ? err.message : "Couldn't save phone");
     } finally {
       setVerifyingPhone(false);
     }
@@ -398,38 +377,29 @@ function RiderApp() {
                     </div>
                   </div>
 
-                  {!profile?.phone_verified && (
+                  {!profile?.phone && (
                     <div className="mt-6 rounded-2xl border border-primary/40 bg-primary/5 p-4">
                       <div className="flex items-start gap-3">
                         <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
                         <div className="flex-1">
-                          <div className="text-sm font-medium">Verify your phone to book</div>
-                          <div className="mt-1 text-xs text-muted-foreground">We'll show your number to the driver only after they accept your ride.</div>
-                          <div className="mt-3 space-y-2">
+                          <div className="text-sm font-medium">Add your phone to book</div>
+                          <div className="mt-1 text-xs text-muted-foreground">Your driver will see it only after they accept your ride.</div>
+                          <div className="mt-3 flex gap-2">
                             <input
                               type="tel"
                               value={phoneDraft}
                               onChange={(e) => setPhoneDraft(e.target.value)}
                               placeholder="+91 98765 43210"
-                              className="w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
+                              className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
                             />
-                            <div className="flex gap-2">
-                              <input
-                                inputMode="numeric"
-                                value={otpCode}
-                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                                placeholder="OTP"
-                                className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
-                              />
-                              <button
-                                type="button"
-                                onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
-                                disabled={verifyingPhone || !isValidPhone(phoneDraft)}
-                                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
-                              >
-                                {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={savePhone}
+                              disabled={verifyingPhone || !isValidPhone(phoneDraft)}
+                              className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                            >
+                              {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -467,7 +437,7 @@ function RiderApp() {
 
                   <button
                     onClick={bookRide}
-                    disabled={!dropoff || loading || !profile?.phone_verified}
+                    disabled={!dropoff || loading || !profile?.phone}
                     className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-medium text-primary-foreground btn-magnetic disabled:opacity-40"
                   >
                     <Sparkles className="h-4 w-4" />
@@ -518,15 +488,14 @@ function RiderApp() {
                         <div className="text-xs text-muted-foreground">Your driver</div>
                         <div className="mt-1 font-display text-lg">{driverProfile.display_name ?? "Driver"}</div>
                       </div>
-                      {driverProfile.phone && driverProfile.phone_verified && (
+                      {driverProfile.phone ? (
                         <a
                           href={`tel:${driverProfile.phone}`}
                           className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
                         >
                           <Phone className="h-3.5 w-3.5" /> {driverProfile.phone}
                         </a>
-                      )}
-                      {(!driverProfile.phone || !driverProfile.phone_verified) && (
+                      ) : (
                         <span className="rounded-full border border-border px-4 py-2 text-xs text-muted-foreground">
                           {maskPhone(driverProfile.phone)}
                         </span>

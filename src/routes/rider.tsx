@@ -8,7 +8,7 @@ const RideMap = lazy(() =>
   import("@/components/RideMap").then((m) => ({ default: m.RideMap })),
 );
 
-export const Route = createFileRoute("/demo")({
+export const Route = createFileRoute("/rider")({
   head: () => ({
     meta: [
       { title: "BR Travels — Live Demo" },

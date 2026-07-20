@@ -71,7 +71,7 @@ function DriverApp() {
   const [riderProfile, setRiderProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [otpCode, setOtpCode] = useState("");
+  
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [role, setRole] = useState<"driver" | "rider" | null>(null);
 
@@ -102,8 +102,8 @@ function DriverApp() {
   // Grant driver role on demand
   async function becomeDriver() {
     if (!userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before driving");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before driving");
       return;
     }
     const { error } = await supabase
@@ -151,8 +151,8 @@ function DriverApp() {
   // Go online with retry: attempts geolocation permission + initial upsert
   const goOnline = useCallback(async () => {
     if (!userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before going online");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before going online");
       return;
     }
     setGoingOnline(true);
@@ -192,57 +192,40 @@ function DriverApp() {
       setOnline(true);
       toast.success("You're live. Waiting for rides.");
     }
-  }, [userId, profile?.phone_verified]);
+  }, [userId, profile?.phone]);
 
-  async function sendPhoneOtp() {
+  async function savePhone() {
     if (!isValidPhone(phoneDraft)) {
       toast.error("Enter a valid phone number with country code");
       return;
     }
+    if (!userId) return;
     const normalizedPhone = normalizePhone(phoneDraft);
     setVerifyingPhone(true);
     try {
-      if (!userId) throw new Error("Not signed in");
-      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
-      if (error) throw error;
-      await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .update({
+          phone: normalizedPhone,
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+        })
         .eq("id", userId);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
+      if (error) throw error;
+      setProfile({
+        display_name: profile?.display_name ?? null,
+        phone: normalizedPhone,
+        phone_verified: true,
+      });
       setPhoneDraft(normalizedPhone);
-      toast.success("SMS OTP sent");
+      toast.success("Phone saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
+      toast.error(err instanceof Error ? err.message : "Couldn't save phone");
     } finally {
       setVerifyingPhone(false);
     }
   }
 
-  async function verifyPhoneOtp() {
-    if (!isValidPhone(phoneDraft) || !userId) return;
-    const normalizedPhone = normalizePhone(phoneDraft);
-    setVerifyingPhone(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: normalizedPhone,
-        token: otpCode.trim(),
-        type: "phone_change",
-      });
-      if (error) throw error;
-      await supabase
-        .from("profiles")
-        .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
-        .eq("id", userId);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
-      setOtpCode("");
-      toast.success("Phone verified");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "OTP verification failed");
-    } finally {
-      setVerifyingPhone(false);
-    }
-  }
 
   // Fetch rider profile when active ride is set
   useEffect(() => {
@@ -274,7 +257,7 @@ function DriverApp() {
 
   // Listen for pending rides
   useEffect(() => {
-    if (!online || active || !profile?.phone_verified) return;
+    if (!online || active) return;
     // initial fetch
     supabase
       .from("rides")
@@ -298,14 +281,10 @@ function DriverApp() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [online, active, profile?.phone_verified]);
+  }, [online, active]);
 
   async function acceptRide() {
     if (!pending || !userId) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before accepting rides");
-      return;
-    }
     const { data, error } = await supabase
       .from("rides")
       .update({ driver_id: userId, status: "accepted" })
@@ -325,10 +304,6 @@ function DriverApp() {
 
   async function updateStatus(next: "arrived" | "in_progress" | "completed") {
     if (!active) return;
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before updating rides");
-      return;
-    }
     const { data, error } = await supabase
       .from("rides")
       .update({ status: next })
@@ -384,38 +359,29 @@ function DriverApp() {
 
       {/* Online toggle */}
       <div className="absolute left-1/2 top-24 z-[1000] -translate-x-1/2">
-        {!profile?.phone_verified ? (
+        {!profile?.phone ? (
           <div className="glass w-[min(92vw,28rem)] rounded-3xl border border-primary/40 p-4">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
               <div className="flex-1">
-                <div className="text-sm font-medium">Verify your phone to drive</div>
-                <div className="mt-1 text-xs text-muted-foreground">Riders see your full number only during active trips.</div>
-                <div className="mt-3 space-y-2">
+                <div className="text-sm font-medium">Add your phone to drive</div>
+                <div className="mt-1 text-xs text-muted-foreground">Riders see your number only during active trips.</div>
+                <div className="mt-3 flex gap-2">
                   <input
                     type="tel"
                     value={phoneDraft}
                     onChange={(e) => setPhoneDraft(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
-                  />
-                  <div className="flex gap-2">
-                  <input
-                    inputMode="numeric"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="OTP"
                     className="min-w-0 flex-1 rounded-full border border-border/70 bg-secondary/40 px-4 py-2 text-xs outline-none focus:border-primary"
                   />
                   <button
                     type="button"
-                    onClick={otpCode ? verifyPhoneOtp : sendPhoneOtp}
+                    onClick={savePhone}
                     disabled={verifyingPhone || !isValidPhone(phoneDraft)}
                     className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
                   >
-                    {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : otpCode ? "Verify" : "Send OTP"}
+                    {verifyingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                   </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -594,15 +560,14 @@ function DriverApp() {
                     <div className="text-xs text-muted-foreground">Rider</div>
                     <div className="font-medium">{riderProfile.display_name ?? "Rider"}</div>
                   </div>
-                  {riderProfile.phone && riderProfile.phone_verified && (
+                  {riderProfile.phone ? (
                     <a
                       href={`tel:${riderProfile.phone}`}
                       className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
                     >
                       <Phone className="h-3.5 w-3.5" /> {riderProfile.phone}
                     </a>
-                  )}
-                  {(!riderProfile.phone || !riderProfile.phone_verified) && (
+                  ) : (
                     <span className="rounded-full border border-border px-4 py-2 text-xs text-muted-foreground">
                       {maskPhone(riderProfile.phone)}
                     </span>
