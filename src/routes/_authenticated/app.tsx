@@ -188,7 +188,7 @@ function RiderApp() {
     }
   }
 
-  async function sendPhoneOtp() {
+  async function savePhone() {
     if (!isValidPhone(phoneDraft)) {
       toast.error("Enter a valid phone number with country code");
       return;
@@ -198,44 +198,24 @@ function RiderApp() {
     try {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
-      const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
-      if (error) throw error;
-      await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update({ phone: normalizedPhone, phone_verified: false, phone_verified_at: null })
+        .update({
+          phone: normalizedPhone,
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+        })
         .eq("id", userRes.user.id);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: false });
-      setPhoneDraft(normalizedPhone);
-      toast.success("SMS OTP sent");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send OTP");
-    } finally {
-      setVerifyingPhone(false);
-    }
-  }
-
-  async function verifyPhoneOtp() {
-    if (!isValidPhone(phoneDraft)) return;
-    const normalizedPhone = normalizePhone(phoneDraft);
-    setVerifyingPhone(true);
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      if (!userRes.user) throw new Error("Not signed in");
-      const { error } = await supabase.auth.verifyOtp({
+      if (error) throw error;
+      setProfile({
+        display_name: profile?.display_name ?? null,
         phone: normalizedPhone,
-        token: otpCode.trim(),
-        type: "phone_change",
+        phone_verified: true,
       });
-      if (error) throw error;
-      await supabase
-        .from("profiles")
-        .update({ phone_verified: true, phone_verified_at: new Date().toISOString() })
-        .eq("id", userRes.user.id);
-      setProfile({ display_name: profile?.display_name ?? null, phone: normalizedPhone, phone_verified: true });
-      setOtpCode("");
-      toast.success("Phone verified");
+      setPhoneDraft(normalizedPhone);
+      toast.success("Phone saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "OTP verification failed");
+      toast.error(err instanceof Error ? err.message : "Couldn't save phone");
     } finally {
       setVerifyingPhone(false);
     }
