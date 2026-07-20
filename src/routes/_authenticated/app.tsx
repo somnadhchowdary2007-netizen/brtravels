@@ -85,7 +85,6 @@ function RiderApp() {
   const [driverProfile, setDriverProfile] = useState<Profile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [otpCode, setOtpCode] = useState("");
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -150,8 +149,8 @@ function RiderApp() {
   }
 
   async function bookRide() {
-    if (!profile?.phone_verified) {
-      toast.error("Verify your phone number before booking a ride");
+    if (!profile?.phone) {
+      toast.error("Add your phone number before booking a ride");
       return;
     }
     if (!pickup || !dropoff) {
