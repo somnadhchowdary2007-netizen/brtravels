@@ -1,52 +1,79 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
-import L from "leaflet";
 
-// Fix Leaflet default marker asset paths (they break under bundlers)
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window {
+    google?: any;
+    __brMapsReady?: boolean;
+    __brMapsInit?: () => void;
+  }
+}
 
-const pinIcon = (color: string, letter: string, ring: string) =>
-  L.divIcon({
-    className: "",
-    html: `<div style="position:relative;width:44px;height:44px;">
-      <span style="position:absolute;inset:0;border-radius:999px;background:${ring};opacity:.35;animation:brPulse 1.8s ease-out infinite;"></span>
-      <span style="position:absolute;inset:4px;border-radius:999px;background:${ring};opacity:.55;animation:brPulse 1.8s ease-out infinite;animation-delay:.6s;"></span>
-      <div style="
-        position:absolute;inset:10px;border-radius:999px;
-        background:${color};
-        display:grid;place-items:center;
-        color:#111;font-family:Inter,sans-serif;font-weight:700;font-size:13px;
-        box-shadow:0 8px 24px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.14);
-        border:2px solid rgba(255,255,255,.75);
-      ">${letter}</div>
-    </div>
-    <style>@keyframes brPulse{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.6);opacity:0}}</style>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
+  | string
+  | undefined;
+const CHANNEL = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
+  | string
+  | undefined;
+
+let loaderPromise: Promise<void> | null = null;
+
+function loadMaps(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.__brMapsReady && window.google?.maps) return Promise.resolve();
+  if (loaderPromise) return loaderPromise;
+
+  loaderPromise = new Promise<void>((resolve, reject) => {
+    if (!BROWSER_KEY) {
+      reject(new Error("Missing Google Maps browser key"));
+      return;
+    }
+    window.__brMapsInit = () => {
+      window.__brMapsReady = true;
+      resolve();
+    };
+    const s = document.createElement("script");
+    const params = new URLSearchParams({
+      key: BROWSER_KEY,
+      loading: "async",
+      callback: "__brMapsInit",
+    });
+    if (CHANNEL) params.set("channel", CHANNEL);
+    s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    s.async = true;
+    s.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(s);
   });
+  return loaderPromise;
+}
 
-const carIcon = L.divIcon({
-  className: "",
-  html: `<div style="
-    width:44px;height:44px;border-radius:12px;
-    background:#0b0d14;border:1px solid rgba(240,200,90,.7);
-    display:grid;place-items:center;box-shadow:0 10px 30px rgba(0,0,0,.6);
-  "><span style="color:#f0c85a;font-size:18px">🚖</span></div>`,
-  iconSize: [44, 44],
-  iconAnchor: [22, 22],
-});
+// Dark premium basemap matching the app's gold-on-black UI
+const DARK_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#0b0d14" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8b8f9c" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0b0d14" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#1a1d28" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a1d28" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#11141d" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2a2416" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#3a3016" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#05060a" }] },
+  { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#0e111a" }] },
+];
 
-function Recenter({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo(center, map.getZoom(), { duration: 1.2 });
-  }, [center, map]);
-  return null;
+function pinSymbol(fill: string) {
+  return {
+    path: "M 0,0 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0",
+    fillColor: fill,
+    fillOpacity: 1,
+    strokeColor: "#ffffff",
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    scale: 1.2,
+  };
 }
 
 export interface RideMapProps {
@@ -57,97 +84,147 @@ export interface RideMapProps {
   className?: string;
 }
 
-function AnimatedRoute({ points }: { points: [number, number][] }) {
-  const [progress, setProgress] = useState(0);
-  const keyRef = useRef("");
-  const key = points.map((p) => p.join(",")).join("|");
+export function RideMap({ center, pickup, dropoff, driver, className }: RideMapProps) {
+  const divRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<Record<string, any>>({});
+  const lineRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (points.length < 2) return;
-    if (keyRef.current === key) return;
-    keyRef.current = key;
-    setProgress(0);
-    let raf = 0;
-    const start = performance.now();
-    const duration = 1400;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / duration);
-      // easeOutCubic
-      setProgress(1 - Math.pow(1 - p, 3));
-      if (p < 1) raf = requestAnimationFrame(tick);
+    let cancelled = false;
+    loadMaps()
+      .then(() => {
+        if (cancelled || !divRef.current || mapRef.current) return;
+        mapRef.current = new window.google.maps.Map(divRef.current, {
+          center: { lat: center[0], lng: center[1] },
+          zoom: 14,
+          disableDefaultUI: true,
+          gestureHandling: "greedy",
+          clickableIcons: false,
+          backgroundColor: "#0b0d14",
+          styles: DARK_STYLE,
+        });
+        setReady(true);
+      })
+      .catch((e) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [key, points.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const drawn = useMemo<[number, number][]>(() => {
-    if (points.length < 2) return points;
-    // Interpolate along polyline by progress
-    const segs = points.length - 1;
-    const total = progress * segs;
-    const full = Math.floor(total);
-    const frac = total - full;
-    const out: [number, number][] = points.slice(0, full + 1) as [number, number][];
-    if (full < segs) {
-      const a = points[full];
-      const b = points[full + 1];
-      out.push([a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac]);
-    }
-    return out;
-  }, [points, progress]);
-
-  if (drawn.length < 2) return null;
-  return (
-    <>
-      {/* Glow underlay */}
-      <Polyline
-        positions={drawn}
-        pathOptions={{ color: "#f0c85a", weight: 12, opacity: 0.18, lineCap: "round" }}
-      />
-      {/* Main dashed line */}
-      <Polyline
-        positions={drawn}
-        pathOptions={{
-          color: "#f0c85a",
-          weight: 4,
-          opacity: 0.95,
-          dashArray: "8 10",
-          lineCap: "round",
-        }}
-      />
-    </>
-  );
-}
-
-export function RideMap({ center, pickup, dropoff, driver, className }: RideMapProps) {
-  const ref = useRef<L.Map | null>(null);
-  const line = useMemo<[number, number][]>(() => {
-    const pts: [number, number][] = [];
-    if (driver) pts.push(driver);
-    if (pickup) pts.push(pickup);
-    if (dropoff) pts.push(dropoff);
+  const points = useMemo(() => {
+    const pts: Array<{ key: string; pos: [number, number] }> = [];
+    if (driver) pts.push({ key: "driver", pos: driver });
+    if (pickup) pts.push({ key: "pickup", pos: pickup });
+    if (dropoff) pts.push({ key: "dropoff", pos: dropoff });
     return pts;
   }, [driver, pickup, dropoff]);
 
+  // Markers, route line, and viewport fitting
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const g = window.google.maps;
+    const map = mapRef.current;
+
+    const colors: Record<string, string> = {
+      pickup: "#f0c85a",
+      dropoff: "#ffffff",
+      driver: "#3ddc97",
+    };
+    const labels: Record<string, string> = { pickup: "A", dropoff: "B", driver: "" };
+
+    // Remove markers no longer present
+    for (const key of Object.keys(markersRef.current)) {
+      if (!points.find((p) => p.key === key)) {
+        markersRef.current[key].setMap(null);
+        delete markersRef.current[key];
+      }
+    }
+
+    for (const p of points) {
+      const position = { lat: p.pos[0], lng: p.pos[1] };
+      const existing = markersRef.current[p.key];
+      if (existing) {
+        existing.setPosition(position);
+      } else {
+        markersRef.current[p.key] = new g.Marker({
+          map,
+          position,
+          zIndex: p.key === "driver" ? 3 : 2,
+          icon:
+            p.key === "driver"
+              ? {
+                  path: g.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: colors.driver,
+                  fillOpacity: 1,
+                  strokeColor: "#0b0d14",
+                  strokeWeight: 4,
+                }
+              : pinSymbol(colors[p.key]),
+          label: labels[p.key]
+            ? { text: labels[p.key], color: "#0b0d14", fontSize: "11px", fontWeight: "700" }
+            : undefined,
+        });
+      }
+    }
+
+    // Route line
+    const path = points.map((p) => ({ lat: p.pos[0], lng: p.pos[1] }));
+    if (path.length >= 2) {
+      if (!lineRef.current) {
+        lineRef.current = new g.Polyline({
+          map,
+          geodesic: true,
+          strokeColor: "#f0c85a",
+          strokeOpacity: 0.95,
+          strokeWeight: 4,
+        });
+      }
+      lineRef.current.setPath(path);
+
+      // Try real road route between pickup and dropoff
+      if (pickup && dropoff && g.DirectionsService) {
+        new g.DirectionsService().route(
+          {
+            origin: { lat: (driver ?? pickup)[0], lng: (driver ?? pickup)[1] },
+            destination: { lat: dropoff[0], lng: dropoff[1] },
+            waypoints: driver ? [{ location: { lat: pickup[0], lng: pickup[1] } }] : [],
+            travelMode: g.TravelMode.DRIVING,
+          },
+          (res: any, status: string) => {
+            if (status === "OK" && res?.routes?.[0]?.overview_path && lineRef.current) {
+              lineRef.current.setPath(res.routes[0].overview_path);
+            }
+          },
+        );
+      }
+    } else if (lineRef.current) {
+      lineRef.current.setMap(null);
+      lineRef.current = null;
+    }
+
+    // Fit / center
+    if (path.length >= 2) {
+      const bounds = new g.LatLngBounds();
+      path.forEach((p) => bounds.extend(p));
+      map.fitBounds(bounds, { top: 120, bottom: 320, left: 60, right: 60 });
+    } else {
+      map.panTo({ lat: center[0], lng: center[1] });
+    }
+  }, [ready, points, center, pickup, dropoff, driver]);
+
   return (
     <div className={className}>
-      <MapContainer
-        center={center}
-        zoom={14}
-        zoomControl={false}
-        ref={ref}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Recenter center={center} />
-        <AnimatedRoute points={line} />
-        {pickup && <Marker position={pickup} icon={pinIcon("#f0c85a", "A", "#f0c85a")} />}
-        {dropoff && <Marker position={dropoff} icon={pinIcon("#ffffff", "B", "#ffffff")} />}
-        {driver && <Marker position={driver} icon={carIcon} />}
-      </MapContainer>
+      <div ref={divRef} style={{ height: "100%", width: "100%", background: "#0b0d14" }} />
+      {error && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 text-center text-xs text-muted-foreground">
+          Map unavailable
+        </div>
+      )}
     </div>
   );
 }
