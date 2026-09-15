@@ -622,8 +622,56 @@ function DriverApp() {
                     Complete ride
                   </button>
                 )}
+                {active.status === "accepted" && (
+                  <button
+                    onClick={() => setConfirmCancel(true)}
+                    className="mt-1 rounded-full border border-border py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    Cancel ride
+                  </button>
+                )}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm cancel modal */}
+      <AnimatePresence>
+        {confirmCancel && active && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[1003] grid place-items-center bg-background/70 p-6 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 20 }}
+              className="glass w-full max-w-sm rounded-3xl border border-border/70 p-8"
+            >
+              <h3 className="font-display text-2xl">Cancel ride?</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Are you sure you want to cancel this ride?
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground btn-magnetic"
+                >
+                  Keep ride
+                </button>
+                <button
+                  onClick={cancelActiveRide}
+                  disabled={cancelling}
+                  className="flex items-center justify-center gap-2 rounded-full border border-border py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-60"
+                >
+                  {cancelling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Cancel ride
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
