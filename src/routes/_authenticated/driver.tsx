@@ -64,6 +64,8 @@ function DriverApp() {
   const [online, setOnline] = useState(false);
   const [goingOnline, setGoingOnline] = useState(false);
   const [confirmOnline, setConfirmOnline] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [pending, setPending] = useState<Ride | null>(null);
   const [active, setActive] = useState<Ride | null>(null);

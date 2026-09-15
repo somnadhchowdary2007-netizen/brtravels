@@ -233,6 +233,8 @@ function RiderApp() {
           setRide(payload.new as Ride);
           if (payload.new.status === "accepted") toast.success("Driver on the way");
           if (payload.new.status === "completed") toast.success("Trip completed. Ride safe.");
+          if (payload.new.status === "cancelled")
+            toast.error("Your driver cancelled this ride. You can book again.");
         },
       )
       .subscribe();
