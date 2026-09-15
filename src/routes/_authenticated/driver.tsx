@@ -323,6 +323,26 @@ function DriverApp() {
     }
   }
 
+  async function cancelActiveRide() {
+    if (!active || !userId) return;
+    setCancelling(true);
+    const { error } = await supabase
+      .from("rides")
+      .update({ status: "cancelled" })
+      .eq("id", active.id)
+      .eq("driver_id", userId);
+    setCancelling(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setConfirmCancel(false);
+    setActive(null);
+    setPending(null);
+    setRiderProfile(null);
+    toast("Ride cancelled. You're back online.");
+  }
+
   return (
     <div className="relative h-[100svh] w-full overflow-hidden bg-background">
       <div className="absolute inset-0">
