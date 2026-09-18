@@ -219,7 +219,7 @@ export function RideMap({ center, pickup, dropoff, driver, className }: RideMapP
 
   return (
     <div className={className}>
-      <div ref={divRef} style={{ height: "100%", width: "100%", background: "#0b0d14" }} />
+      <div ref={divRef} className="absolute inset-0 h-full w-full bg-background" />
       {error && (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 text-center text-xs text-muted-foreground">
           Map unavailable

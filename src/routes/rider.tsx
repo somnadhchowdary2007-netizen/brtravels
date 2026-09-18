@@ -13,6 +13,10 @@ export const Route = createFileRoute("/rider")({
     meta: [
       { title: "BR Travels — Live Demo" },
       { name: "description", content: "Try the BR Travels ride-hailing flow instantly — no signup required." },
+      { property: "og:title", content: "BR Travels — Book a Ride" },
+      { property: "og:description", content: "Book a BR Travels ride with live mapping, clear fares, and premium vehicle options." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: DemoApp,
@@ -119,65 +123,67 @@ function DemoApp() {
   }
 
   return (
-    <div className="relative h-[100svh] w-full overflow-hidden bg-background">
-      <div className="absolute inset-0">
+    <main className="fixed inset-0 isolate h-dvh w-screen overflow-hidden overscroll-none bg-background">
+      <div className="absolute inset-0 h-full w-full">
         <Suspense fallback={<div className="h-full w-full bg-card" />}>
           <RideMap
             center={center}
             pickup={pickup}
             dropoff={dropoff}
             driver={driverPos}
-            className="h-full w-full"
+            className="absolute inset-0 h-full w-full"
           />
         </Suspense>
       </div>
 
       {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] p-4">
-        <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between rounded-full glass px-4 py-2.5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] px-3 pt-3 sm:px-5 sm:pt-5">
+        <nav className="pointer-events-auto mx-auto grid w-full max-w-lg grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-full px-4 py-2.5 glass">
           <Link to="/" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Home
           </Link>
-          <span className="font-display text-sm">
+          <span className="whitespace-nowrap font-display text-sm">
             BR Travels<span className="text-primary">.</span>
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Demo</span>
-        </div>
+          <span className="justify-self-end font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Demo</span>
+        </nav>
       </div>
 
-      {/* Bottom sheet */}
+      {/* Floating booking panel */}
       <motion.div
         initial={{ y: 400 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.2, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-        className="absolute inset-x-0 bottom-0 z-[1000]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex justify-center px-3 pb-3 sm:px-5 sm:pb-5"
       >
-        <div className="mx-auto max-w-2xl">
-          <div className="glass mx-3 mb-3 rounded-t-3xl border border-b-0 border-border/60 p-6 pb-8">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+        <section
+          aria-label="Book a ride"
+          className="pointer-events-auto w-full max-w-xl max-h-[calc(100dvh-5.75rem)] overflow-y-auto overscroll-contain rounded-3xl border border-border/60 p-4 shadow-2xl glass sm:p-5"
+        >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border sm:mb-4" />
 
             <AnimatePresence mode="wait">
               {phase === "idle" && (
                 <motion.div key="book" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">— Where to?</p>
 
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 px-4 py-3">
-                      <MapPin className="h-4 w-4 text-primary" />
+                   <div className="mt-3 space-y-2 sm:mt-4">
+                     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 px-4 py-3">
+                       <MapPin className="h-4 w-4 shrink-0 text-primary" />
                       <input
                         value={pickupText}
                         onChange={(e) => setPickupText(e.target.value)}
-                        className="flex-1 bg-transparent text-sm outline-none"
+                         className="min-w-0 bg-transparent text-sm outline-none"
                         placeholder="Pickup"
                       />
                     </div>
-                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 px-4 py-3">
-                      <Navigation className="h-4 w-4 text-foreground" />
+                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 px-4 py-2.5">
+                       <Navigation className="h-4 w-4 shrink-0 text-foreground" />
                       <input
                         value={dropoffText}
                         onChange={(e) => setDropoffText(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && searchDropoff()}
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                         className="min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                         placeholder="Where to?"
                       />
                       <button
@@ -190,7 +196,7 @@ function DemoApp() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-3 gap-2">
+                   <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5">
                     {TIERS.map((t) => {
                       const active = tier === t.id;
                       const tFare = baseFare * t.mult;
@@ -198,16 +204,16 @@ function DemoApp() {
                         <button
                           key={t.id}
                           onClick={() => setTier(t.id)}
-                          className={`rounded-2xl border p-3 text-left transition ${
+                           className={`min-w-0 rounded-2xl border p-2.5 text-left transition sm:p-3 ${
                             active ? "border-primary bg-primary/10" : "border-border/60 bg-secondary/30 hover:border-border"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <Car className="h-4 w-4 text-primary" />
-                            <span className="font-mono text-[10px] text-muted-foreground">{t.eta}</span>
+                             <span className="whitespace-nowrap font-mono text-[9px] text-muted-foreground sm:text-[10px]">{t.eta}</span>
                           </div>
-                          <div className="mt-3 text-xs font-medium">{t.name.split(" ")[1]}</div>
-                          <div className="mt-1 font-display text-lg">{dropoff ? `₹${tFare.toFixed(0)}` : "—"}</div>
+                           <div className="mt-2 truncate text-[11px] font-medium sm:mt-3 sm:text-xs">{t.name.split(" ")[1]}</div>
+                           <div className="mt-1 truncate font-display text-base sm:text-lg">{dropoff ? `₹${tFare.toFixed(0)}` : "—"}</div>
                         </button>
                       );
                     })}
@@ -216,7 +222,7 @@ function DemoApp() {
                   <button
                     onClick={bookRide}
                     disabled={!dropoff}
-                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-medium text-primary-foreground btn-magnetic disabled:opacity-40"
+                     className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-medium text-primary-foreground btn-magnetic disabled:opacity-40 sm:mt-5"
                   >
                     <Sparkles className="h-4 w-4" />
                     {dropoff ? `Book ${activeTier.name}` : "Enter destination"}
@@ -308,9 +314,8 @@ function DemoApp() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        </div>
+        </section>
       </motion.div>
-    </div>
+    </main>
   );
 }
