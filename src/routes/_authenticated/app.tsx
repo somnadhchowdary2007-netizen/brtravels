@@ -101,6 +101,16 @@ function RiderApp() {
         setProfile(data);
         setPhoneDraft(data.phone ?? "");
       }
+      // Resume an in-flight ride after reload
+      const { data: activeRide } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("rider_id", userRes.user.id)
+        .in("status", ["pending", "accepted", "arrived", "in_progress"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeRide) setRide(activeRide as Ride);
     })();
   }, []);
 
@@ -466,8 +476,18 @@ function RiderApp() {
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">Fare</div>
                       <div className="font-display text-2xl">₹{ride.fare_estimate}</div>
+                      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
+                        Cash
+                      </div>
                     </div>
                   </div>
+
+                  {ride.status === "completed" && (
+                    <div className="mt-4 rounded-2xl border border-primary/40 bg-primary/5 p-4 text-sm">
+                      Pay ₹{ride.fare_estimate} in cash to your driver.
+                    </div>
+                  )}
+
 
                   {ride.status === "pending" && (
                     <div className="mt-6 flex items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 p-4 text-sm text-muted-foreground">
