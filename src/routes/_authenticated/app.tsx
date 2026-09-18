@@ -294,23 +294,24 @@ function RiderApp() {
   }
 
   return (
-    <div className="relative h-[100svh] w-full overflow-hidden bg-background">
+    <main className="fixed inset-0 isolate h-dvh w-screen overflow-hidden overscroll-none bg-background">
       {/* Map */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 h-full w-full">
         <Suspense fallback={<div className="h-full w-full bg-card" />}>
           <RideMap
             center={center}
             pickup={pickup}
             dropoff={dropoff}
             driver={driverPos}
-            className="h-full w-full"
+            className="absolute inset-0 h-full w-full"
           />
         </Suspense>
       </div>
 
+
       {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] p-4">
-        <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between rounded-full glass px-4 py-2.5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] px-3 pt-3 sm:px-5 sm:pt-5">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-lg items-center justify-between rounded-full glass px-4 py-2.5">
           <Link
             to="/"
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
@@ -337,11 +338,11 @@ function RiderApp() {
         initial={{ y: 400 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.2, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-        className="absolute inset-x-0 bottom-0 z-[1000]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex justify-center px-3 pb-3 sm:px-5 sm:pb-5"
       >
-        <div className="mx-auto max-w-2xl">
-          <div className="glass mx-3 mb-3 rounded-t-3xl border border-b-0 border-border/60 p-6 pb-8">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+        <div className="pointer-events-auto w-full max-w-xl">
+          <div className="glass max-h-[calc(100dvh-5.75rem)] overflow-y-auto overscroll-contain rounded-3xl border border-border/60 p-4 shadow-2xl sm:p-5">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border sm:mb-4" />
 
             <AnimatePresence mode="wait">
               {!ride ? (
@@ -532,6 +533,6 @@ function RiderApp() {
           </div>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }
