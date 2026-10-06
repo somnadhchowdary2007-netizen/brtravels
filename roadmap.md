@@ -1,0 +1,4 @@
+- [ ] Fix rider booking redirect to auth with a working signed-in route/navigation path.
+- [ ] Show ride-completion confirmations to rider and driver with fare, pickup, and drop details.
+- [ ] Verify preview/build and close completed tasks.
+- [ ] Add a driver dashboard for pending rides, completed rides with earnings, and accepted-ride history.
